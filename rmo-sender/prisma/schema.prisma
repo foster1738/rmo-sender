@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+  role         String @default("user")
+  createdAt    DateTime @default(now())
+  accounts     SendingAccount[]
+  contacts     Contact[]
+  campaigns    Campaign[]
+}
+model SendingAccount {
+  id                 String @id @default(cuid())
+  userId             String
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           String
+  email              String
+  displayName        String
+  encryptedRefresh   String
+  status             String @default("connected")
+  createdAt          DateTime @default(now())
+  campaigns          Campaign[]
+  @@unique([userId, email])
+}
+model Contact {
+  id             String @id @default(cuid())
+  userId         String
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email          String
+  firstName      String?
+  lastName       String?
+  company        String?
+  customFields   Json?
+  consentedAt    DateTime?
+  consentSource  String?
+  unsubscribedAt DateTime?
+  createdAt      DateTime @default(now())
+  @@unique([userId, email])
+  @@index([userId, unsubscribedAt])
+}
+model Campaign {
+  id          String @id @default(cuid())
+  userId      String
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId   String
+  account     SendingAccount @relation(fields: [accountId], references: [id])
+  name        String
+  subject     String
+  html        String
+  status      String @default("draft")
+  total       Int @default(0)
+  sent        Int @default(0)
+  failed      Int @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([userId, createdAt])
+}
+model Delivery {
+  id         String @id @default(cuid())
+  campaignId String
+  contact    String
+  status     String @default("queued")
+  error      String?
+  providerId String?
+  createdAt  DateTime @default(now())
+  sentAt     DateTime?
+  @@index([campaignId, status])
+}
+model Suppression {
+  id        String @id @default(cuid())
+  email     String @unique
+  reason    String
+  createdAt DateTime @default(now())
+}
